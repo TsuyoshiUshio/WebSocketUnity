@@ -1,16 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 
 namespace WebSocketServer
 {
-    public class ChatServer
+    public class ConferenceServer
     {
         private readonly AsyncLock _asyncLock = new AsyncLock();
-        private readonly List<ChatClient> _clients = new List<ChatClient>();
+        private readonly List<ConferenceClient> _clients = new List<ConferenceClient>();
 
         public void Map(IApplicationBuilder app)
         {
@@ -27,7 +28,7 @@ namespace WebSocketServer
                 return;
             }
             var websocket = await hc.WebSockets.AcceptWebSocketAsync();
-            var client = new ChatClient(websocket);
+            var client = new ConferenceClient(websocket);
 
             await client.RecieveJoinAsync();
 
@@ -38,11 +39,13 @@ namespace WebSocketServer
                 _clients.AsParallel().ForAll(
                     x =>
                     {
+                        var message = $"{client.UserName} さんが入室しました";
+                        var messageBytes = Encoding.UTF8.GetBytes(message);
                         // 入室メッセージを送信
                         x.OnNext(new ChatMessage
                         {
                             UserName = "管理者",
-                            Message = $"{client.UserName} さんが入室しました",
+                            Message = new ArraySegment<byte>(messageBytes),
                             RecieveTime = DateTimeOffset.Now
                         });
 
@@ -65,11 +68,13 @@ namespace WebSocketServer
             await client.ReceiveAsync();
         }
 
-        private async Task Close(ChatClient client)
+        private async Task Close(ConferenceClient client)
         {
             using (await _asyncLock.LockAsync())
             {
                 _clients.Remove(client);
+
+
 
                 // 退室メッセージを送信
                 _clients.ForEach(
@@ -77,13 +82,21 @@ namespace WebSocketServer
                     {
                         _clients.ForEach(
                             y =>
+                            {
+                                var message = $"{x.UserName} さんが退室しました";
+                                var messageBytes = Encoding.UTF8.GetBytes(message);
                                 y.OnNext(new ChatMessage
                                 {
                                     UserName = "管理者",
-                                    Message = $"{x.UserName} さんが退室しました",
+                                    Message = new ArraySegment<byte>(messageBytes),
                                     RecieveTime = DateTimeOffset.Now
-                                }));
-                    });
+                                });
+
+                            }
+
+                        );
+                    }
+                    );
             }
         }
     }
