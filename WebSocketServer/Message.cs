@@ -19,7 +19,7 @@ namespace WebSocketServer
     public class ChatMessage
     {
         public string UserName { get; set; }
-        public string Message { get; set; }
+        public ArraySegment<byte> Message { get; set; }
         public DateTimeOffset RecieveTime { get; set; }
     }
 }

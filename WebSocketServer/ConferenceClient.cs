@@ -9,12 +9,12 @@ using Newtonsoft.Json;
 
 namespace WebSocketServer
 {
-    public class ChatClient : IObservable<ChatMessage>, IObserver<ChatMessage>, IDisposable
+    public class ConferenceClient : IObservable<ChatMessage>, IObserver<ChatMessage>, IDisposable
     {
         private readonly Subject<ChatMessage> _receiveSubject;
         private readonly WebSocket _socket;
 
-        public ChatClient(WebSocket socket)
+        public ConferenceClient(WebSocket socket)
         {
             _socket = socket;
             _receiveSubject = new Subject<ChatMessage>();
@@ -65,9 +65,8 @@ namespace WebSocketServer
         public async void OnNext(ChatMessage value)
         {
             if (_socket.State == WebSocketState.Open)
-                await _socket.SendAsync(
-                    new ArraySegment<byte>(Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(value))),
-                    WebSocketMessageType.Text,
+                await _socket.SendAsync(value.Message,
+                    WebSocketMessageType.Binary,
                     true, CancellationToken.None);
         }
 
@@ -127,12 +126,12 @@ namespace WebSocketServer
                         _receiveSubject.OnCompleted();
                         break;
                     }
-                    if (result.MessageType == WebSocketMessageType.Text)
+                    if (result.MessageType == WebSocketMessageType.Binary)
                     {
                         _receiveSubject.OnNext(new ChatMessage
                         {
                             UserName = UserName,
-                            Message = Encoding.UTF8.GetString(buffer, 0, resultCount),
+                            Message = buffer,
                             RecieveTime = DateTimeOffset.Now
                         });
                         resultCount = 0;
