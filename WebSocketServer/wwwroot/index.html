@@ -2,159 +2,119 @@
 <html>
 <head>
     <meta charset="utf-8" />
-    <title></title>
+    <title>WebSocket Chat</title>
+    <link rel="stylesheet" href="content/vendor.min.css" />
     <style>
-        table {
-            border: 0
+        /* Sticky footer styles
+            -------------------------------------------------- */
+        html {
+            min-height: 100%;
+            position: relative;
         }
 
-        .commslog-data {
-            font-family: Consolas, Courier New, Courier, monospace;
+        body {
+            /* Margin bottom by footer height */
+            margin-bottom: 60px;
         }
 
-        .commslog-server {
-            background-color: red;
-            color: white
-        }
-
-        .commslog-client {
-            background-color: green;
-            color: white
+        .footer {
+            background-color: #f5f5f5;
+            bottom: 0;
+            /* Set the fixed height of the footer here */
+            height: 40px;
+            position: absolute;
+            width: 100%;
         }
     </style>
 </head>
 <body>
-    <h1>WebSocket Sample Application</h1>
-    <p id="stateLabel">Ready to connect...</p>
-    <div>
-        <label for="connectionUrl">WebSocket Server URL:</label>
-        <input id="connectionUrl" />
-        <button id="connectButton" type="submit">Connect</button>
-    </div>
-    <p></p>
-    <div>
-        <label for="sendMessage">Message to send:</label>
-        <input id="sendMessage" disabled />
-        <button id="sendButton" type="submit" disabled>Send</button>
-        <button id="closeButton" disabled>Close Socket</button>
+    <div id="app">
+        <div class="container">
+            <div class="jumbotron">
+                <h1>WebSocket Chat Sample</h1>
+                <p>ASP.NET CoreでWebSocketを扱うサンプルアプリケーションです。</p>
+                <div v-if="!isOpen" class="input-group">
+                    <input type="text" v-model="userName" v-on:keyup.enter="Connect" class="form-control" placeholder="input user name">
+                    <span class="input-group-btn">
+                        <button v-on:click="Connect" class="btn btn-default" type="button">参加</button>
+                    </span>
+                </div><!-- /input-group -->
+                <p v-else>{{userName}}さん、こんにちは</p>
+            </div>
+            <div class="row">
+                <div class="panel panel-default" v-for="message in messages">
+                    <div class="panel-heading">{{message.UserName}}</div>
+                    <div class="panel-body">
+                        {{message.Message}}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer class="footer">
+            <div class="container">
+                <div v-if="isOpen" class="row">
+                    <div class="input-group">
+                        <input type="text" v-model="sendMessage" v-on:keyup.enter="Send" class="form-control" placeholder="input message">
+                        <span class="input-group-btn">
+                            <button v-on:click="Send" class="btn btn-default" type="button">送信</button>
+                        </span>
+                    </div><!-- /input-group -->
+                </div>
+            </div>
+        </footer>
+
     </div>
 
-    <h2>Communication Log</h2>
-    <table style="width: 800px">
-        <thead>
-            <tr>
-                <td style="width: 100px">From</td>
-                <td style="width: 100px">To</td>
-                <td>Data</td>
-            </tr>
-        </thead>
-        <tbody id="commsLog"></tbody>
-    </table>
 
-    <script>
-        var connectionForm = document.getElementById("connectionForm");
-        var connectionUrl = document.getElementById("connectionUrl");
-        var connectButton = document.getElementById("connectButton");
-        var stateLabel = document.getElementById("stateLabel");
-        var sendMessage = document.getElementById("sendMessage");
-        var sendButton = document.getElementById("sendButton");
-        var sendForm = document.getElementById("sendForm");
-        var commsLog = document.getElementById("commsLog");
-        var closeButton = document.getElementById("closeButton");
-        var socket;
-        var scheme = document.location.protocol == "https:" ? "wss" : "ws";
-        var port = document.location.port ? (":" + document.location.port) : "";
-        connectionUrl.value = scheme + "://" + document.location.hostname + port + "/ws" ;
-        function updateState() {
-            function disable() {
-                sendMessage.disabled = true;
-                sendButton.disabled = true;
-                closeButton.disabled = true;
-            }
-            function enable() {
-                sendMessage.disabled = false;
-                sendButton.disabled = false;
-                closeButton.disabled = false;
-            }
-            connectionUrl.disabled = true;
-            connectButton.disabled = true;
-            if (!socket) {
-                disable();
-            } else {
-                switch (socket.readyState) {
-                    case WebSocket.CLOSED:
-                        stateLabel.innerHTML = "Closed";
-                        disable();
-                        connectionUrl.disabled = false;
-                        connectButton.disabled = false;
-                        break;
-                    case WebSocket.CLOSING:
-                        stateLabel.innerHTML = "Closing...";
-                        disable();
-                        break;
-                    case WebSocket.CONNECTING:
-                        stateLabel.innerHTML = "Connecting...";
-                        disable();
-                        break;
-                    case WebSocket.OPEN:
-                        stateLabel.innerHTML = "Open";
-                        enable();
-                        break;
-                    default:
-                        stateLabel.innerHTML = "Unknown WebSocket State: " + htmlEscape(socket.readyState);
-                        disable();
-                        break;
-                }
-            }
-        }
-        closeButton.onclick = function () {
-            if (!socket || socket.readyState != WebSocket.OPEN) {
-                alert("socket not connected");
-            }
-            socket.close(1000, "Closing from client");
-        }
-        sendButton.onclick = function () {
-            if (!socket || socket.readyState != WebSocket.OPEN) {
-                alert("socket not connected");
-            }
-            var data = sendMessage.value;
-            socket.send(data);
-            commsLog.innerHTML += '<tr>' +
-                '<td class="commslog-client">Client</td>' +
-                '<td class="commslog-server">Server</td>' +
-                '<td class="commslog-data">' + htmlEscape(data) + '</td></tr>';
-        }
-        connectButton.onclick = function() {
-            stateLabel.innerHTML = "Connecting";
-            socket = new WebSocket(connectionUrl.value);
-            socket.onopen = function (event) {
-                updateState();
-                commsLog.innerHTML += '<tr>' +
-                    '<td colspan="3" class="commslog-data">Connection opened</td>' +
-                '</tr>';
-            };
-            socket.onclose = function (event) {
-                updateState();
-                commsLog.innerHTML += '<tr>' +
-                    '<td colspan="3" class="commslog-data">Connection closed. Code: ' + htmlEscape(event.code) + '. Reason: ' + htmlEscape(event.reason) + '</td>' +
-                '</tr>';
-            };
-            socket.onerror = updateState;
-            socket.onmessage = function (event) {
-                commsLog.innerHTML += '<tr>' +
-                    '<td class="commslog-server">Server</td>' +
-                    '<td class="commslog-client">Client</td>' +
-                    '<td class="commslog-data">' + htmlEscape(event.data) + '</td></tr>';
-            };
-        };
-        function htmlEscape(str) {
-            return str
-                .replace(/&/g, '&amp;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;');
-        }
-    </script>
 </body>
 </html>
+
+<script src="scripts/vendor.min.js"></script>
+<script type="text/javascript">
+    var model = {
+        endpoint: "ws://" + location.host + "/ws",
+        messages: [],
+        sendMessage: "",
+        isOpen: false,
+        consoleMessages: [],
+        userName: "",
+        websocket: null,
+        connect: function () {
+            if (this.websocket !== null)
+                return;
+            this.websocket = new WebSocket(this.endpoint);
+            var self = this;
+            this.websocket.onopen = function (event) {
+                self.isOpen = true;
+                self.websocket.send(JSON.stringify({ MessageType: "JoinMessage", UserName: model.userName }));
+            };
+            this.websocket.onerror = function (event) {
+                console.debug(event);
+            };
+            this.websocket.onclose = function (event) {
+                self.isOpen = false;
+                self.websocket = null;
+            };
+            this.websocket.onmessage = function (event) {
+                self.messages.push(JSON.parse(event.data));
+                Vue.nextTick(function () {
+                    window.scrollTo(0, document.body.scrollHeight);
+                });
+            };
+        },
+        send: function () {
+            if (this.isOpen && this.sendMessage !== "") {
+                this.websocket.send(this.sendMessage);
+                this.sendMessage = "";
+            }
+        }
+    };
+    var vuemodel = new Vue({
+        el: '#app',
+        data: model,
+        methods: {
+            Connect: model.connect,
+            Send: model.send
+        }
+    });
+</script>
