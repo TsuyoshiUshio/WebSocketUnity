@@ -1,0 +1,19 @@
+[
+    {
+      "outputFileName": "wwwroot/scripts/vendor.min.js",
+      "inputFiles": [
+        "node_modules/vue/dist/vue.js",
+        "node_mpdules/bootstrap/dist/js/bootstrap.js"
+      ],
+      "minify": {
+        "enabled": true,
+        "renameLocals": true
+      }
+    },
+    {
+      "outputFileName": "wwwroot/content/vendor.min.css",
+      "inputFiles": [
+        "node_modules/bootstrap/dist/css/bootstrap.css"
+      ]
+    }
+  ]
